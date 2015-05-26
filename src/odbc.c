@@ -127,6 +127,12 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_const(mrb, class_env, "VERSION_2", mrb_fixnum_value(SQL_OV_ODBC2));
   mrb_define_const(mrb, class_env, "VERSION_3", mrb_fixnum_value(SQL_OV_ODBC3));
 
+  mrb_define_const(mrb, class_env, "CONNECTION_POOLING", mrb_fixnum_value(SQL_ATTR_CONNECTION_POOLING));
+  mrb_define_const(mrb, class_env, "CP_OFF", mrb_fixnum_value(SQL_CP_OFF));
+  mrb_define_const(mrb, class_env, "CP_ONE_PER_DRIVER", mrb_fixnum_value(SQL_CP_ONE_PER_DRIVER));
+  mrb_define_const(mrb, class_env, "CP_ONE_PER_ENV", mrb_fixnum_value(SQL_CP_ONE_PER_HENV));
+  mrb_define_const(mrb, class_env, "CP_DEFAULT", mrb_fixnum_value(SQL_CP_DEFAULT));
+
   class_conn = mrb_define_class_under(mrb, module_odbc, "Conn", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_conn, MRB_TT_DATA);
   mrb_define_method(mrb, class_conn, "initialize", mrb_odbc_conn_initialize, MRB_ARGS_REQ(1));
