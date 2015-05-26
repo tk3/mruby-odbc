@@ -16,6 +16,7 @@ typedef struct {
 
 static mrb_odbc_env *mrb_odbc_env_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_env_initialize(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_env_set_attr(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_env_free(mrb_state *mrb, void *p);
 
 static mrb_odbc_conn *mrb_odbc_conn_alloc(mrb_state *mrb);
@@ -44,6 +45,21 @@ static mrb_value mrb_odbc_env_initialize(mrb_state *mrb, mrb_value self)
 
   DATA_PTR(self) = env;
   DATA_TYPE(self) = &mrb_odbc_env_type;
+
+  return self;
+}
+
+static mrb_value mrb_odbc_env_set_attr(mrb_state *mrb, mrb_value self)
+{
+  mrb_int attr;
+  mrb_int val;
+  mrb_odbc_env *env;
+
+  mrb_get_args(mrb, "ii", &attr, &val);
+
+  env = mrb_get_datatype(mrb, self, &mrb_odbc_env_type);
+
+  SQLSetEnvAttr(env->env, attr, (SQLINTEGER *)&val, 0);
 
   return self;
 }
@@ -105,6 +121,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   class_env = mrb_define_class_under(mrb, module_odbc, "Env", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_env, MRB_TT_DATA);
   mrb_define_method(mrb, class_env, "initialize", mrb_odbc_env_initialize, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_env, "set_attr", mrb_odbc_env_set_attr, MRB_ARGS_REQ(2));
 
   class_conn = mrb_define_class_under(mrb, module_odbc, "Conn", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_conn, MRB_TT_DATA);
