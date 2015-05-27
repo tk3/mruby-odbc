@@ -133,6 +133,12 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_const(mrb, class_env, "CP_ONE_PER_ENV", mrb_fixnum_value(SQL_CP_ONE_PER_HENV));
   mrb_define_const(mrb, class_env, "CP_DEFAULT", mrb_fixnum_value(SQL_CP_DEFAULT));
 
+  mrb_define_const(mrb, class_env, "CP_MATCH", mrb_fixnum_value(SQL_ATTR_CP_MATCH));
+  mrb_define_const(mrb, class_env, "CP_STRICT_MATCH", mrb_fixnum_value(SQL_CP_STRICT_MATCH));
+  mrb_define_const(mrb, class_env, "CP_RELAXED_MATCH", mrb_fixnum_value(SQL_CP_RELAXED_MATCH));
+  mrb_define_const(mrb, class_env, "CP_MATCH_DEFAULT", mrb_fixnum_value(SQL_CP_MATCH_DEFAULT));
+
+
   class_conn = mrb_define_class_under(mrb, module_odbc, "Conn", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_conn, MRB_TT_DATA);
   mrb_define_method(mrb, class_conn, "initialize", mrb_odbc_conn_initialize, MRB_ARGS_REQ(1));
