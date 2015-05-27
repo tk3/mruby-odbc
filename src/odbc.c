@@ -107,6 +107,24 @@ static mrb_value mrb_odbc_conn_initialize(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+static mrb_value mrb_odbc_conn_driver_connect(mrb_state *mrb, mrb_value self)
+{
+  mrb_odbc_conn *conn;
+  char *conn_str;
+  SQLRETURN r;
+
+  mrb_get_args(mrb, "z", &conn_str);
+
+  conn = mrb_get_datatype(mrb, self, &mrb_odbc_conn_type);
+
+  r = SQLDriverConnect(conn->conn, NULL, (SQLCHAR *)conn_str, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_COMPLETE);
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to DriverConnect.");
+  }
+
+  return self;
+}
+
 static void mrb_odbc_conn_free(mrb_state *mrb, void *p)
 {
   mrb_odbc_conn *conn = (mrb_odbc_conn *)p;
@@ -150,6 +168,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   class_conn = mrb_define_class_under(mrb, module_odbc, "Conn", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_conn, MRB_TT_DATA);
   mrb_define_method(mrb, class_conn, "initialize", mrb_odbc_conn_initialize, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_conn, "driver_connect", mrb_odbc_conn_driver_connect, MRB_ARGS_REQ(1));
 }
 
 void
