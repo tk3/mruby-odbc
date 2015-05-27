@@ -38,10 +38,14 @@ static mrb_odbc_env *mrb_odbc_env_alloc(mrb_state *mrb)
 static mrb_value mrb_odbc_env_initialize(mrb_state *mrb, mrb_value self)
 {
   mrb_odbc_env *env;
+  SQLRETURN r;
 
   env = mrb_odbc_env_alloc(mrb);
 
-  SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env->env);
+  r = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env->env);
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to create Env Handle.");
+  }
 
   DATA_PTR(self) = env;
   DATA_TYPE(self) = &mrb_odbc_env_type;
@@ -84,6 +88,7 @@ static mrb_value mrb_odbc_conn_initialize(mrb_state *mrb, mrb_value self)
   mrb_odbc_conn *conn;
   mrb_value arg_env;
   mrb_odbc_env *env;
+  SQLRETURN r;
 
   mrb_get_args(mrb, "o", &arg_env);
 
@@ -91,7 +96,10 @@ static mrb_value mrb_odbc_conn_initialize(mrb_state *mrb, mrb_value self)
 
   conn = mrb_odbc_conn_alloc(mrb);
 
-  SQLAllocHandle(SQL_HANDLE_DBC, env->env, &conn->conn);
+  r = SQLAllocHandle(SQL_HANDLE_DBC, env->env, &(conn->conn));
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to create Conn Handle.");
+  }
 
   DATA_PTR(self) = conn;
   DATA_TYPE(self) = &mrb_odbc_conn_type;
