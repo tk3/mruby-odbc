@@ -63,7 +63,7 @@ static mrb_value mrb_odbc_env_set_attr(mrb_state *mrb, mrb_value self)
 
   env = mrb_get_datatype(mrb, self, &mrb_odbc_env_type);
 
-  SQLSetEnvAttr(env->env, attr, (SQLINTEGER *)&val, 0);
+  SQLSetEnvAttr(env->env, attr, (SQLPOINTER *)val, 0);
 
   return self;
 }
