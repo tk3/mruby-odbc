@@ -18,6 +18,10 @@ typedef struct {
   SQLHSTMT stmt;
 } mrb_odbc_stmt;
 
+typedef struct {
+  SQLHSTMT stmt;
+} mrb_odbc_resultset;
+
 static mrb_odbc_env *mrb_odbc_env_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_env_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_env_set_attr(mrb_state *mrb, mrb_value self);
@@ -32,6 +36,8 @@ static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
+static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
+
 static const mrb_data_type mrb_odbc_env_type = {
   "mrb_odbc_env", mrb_odbc_env_free,
 };
@@ -40,6 +46,9 @@ static const mrb_data_type mrb_odbc_conn_type = {
 };
 static const mrb_data_type mrb_odbc_stmt_type = {
   "mrb_odbc_stmt", mrb_odbc_stmt_free,
+};
+static const mrb_data_type mrb_odbc_resultset_type = {
+  "mrb_odbc_resultset", mrb_odbc_resultset_free,
 };
 
 static mrb_odbc_env *mrb_odbc_env_alloc(mrb_state *mrb)
@@ -180,6 +189,10 @@ static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self)
   SQLRETURN r;
   mrb_odbc_stmt *stmt;
   char *sql;
+  mrb_odbc_resultset *rs;
+  struct RClass *class_odbc;
+  struct RClass *class_odbc_resultset;
+  mrb_value c;
 
   mrb_get_args(mrb, "z", &sql);
 
@@ -190,7 +203,14 @@ static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to execute SQL.");
   }
 
-  return self;
+  rs = (mrb_odbc_resultset *)mrb_malloc(mrb, sizeof(mrb_odbc_resultset));
+  rs->stmt = stmt->stmt;
+
+  class_odbc = mrb_module_get(mrb, "ODBC");
+  class_odbc_resultset = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(class_odbc), mrb_intern_lit(mrb, "ResultSet")));
+  c = mrb_class_new_instance(mrb, 0, NULL, class_odbc_resultset);
+
+  return mrb_obj_value(Data_Wrap_Struct(mrb, mrb_obj_class(mrb, c), &mrb_odbc_resultset_type, rs));
 }
 
 static mrb_value mrb_odbc_stmt_num_result_cols(mrb_state *mrb, mrb_value self)
@@ -230,8 +250,15 @@ static void mrb_odbc_stmt_free(mrb_state *mrb, void *p)
   mrb_odbc_stmt *stmt = (mrb_odbc_stmt *)p;
   if (stmt->stmt != NULL) {
     SQLFreeHandle(SQL_HANDLE_STMT, stmt->stmt);
+    stmt->stmt = NULL;
   }
   mrb_free(mrb, stmt);
+}
+
+static void mrb_odbc_resultset_free(mrb_state *mrb, void *p)
+{
+  mrb_odbc_resultset *rs = (mrb_odbc_resultset *)p;
+  mrb_free(mrb, rs);
 }
 
 void
@@ -241,6 +268,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   struct RClass *class_env;
   struct RClass *class_conn;
   struct RClass *class_stmt;
+  struct RClass *class_resultset;
 
   module_odbc = mrb_define_module(mrb, "ODBC");
 
@@ -276,6 +304,9 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_method(mrb, class_stmt, "exec_direct", mrb_odbc_stmt_exec_direct, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_stmt, "num_result_cols", mrb_odbc_stmt_num_result_cols, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_stmt, "row_count", mrb_odbc_stmt_row_count, MRB_ARGS_NONE());
+
+  class_resultset = mrb_define_class_under(mrb, module_odbc, "ResultSet", mrb->object_class);
+  MRB_SET_INSTANCE_TT(class_resultset, MRB_TT_DATA);
 }
 
 void
