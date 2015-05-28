@@ -14,6 +14,10 @@ typedef struct {
   SQLHDBC conn;
 } mrb_odbc_conn;
 
+typedef struct {
+  SQLHSTMT stmt;
+} mrb_odbc_stmt;
+
 static mrb_odbc_env *mrb_odbc_env_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_env_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_env_set_attr(mrb_state *mrb, mrb_value self);
@@ -23,11 +27,18 @@ static mrb_odbc_conn *mrb_odbc_conn_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_conn_initialize(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_conn_free(mrb_state *mrb, void *p);
 
+static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb);
+static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self);
+static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
+
 static const mrb_data_type mrb_odbc_env_type = {
   "mrb_odbc_env", mrb_odbc_env_free,
 };
 static const mrb_data_type mrb_odbc_conn_type = {
   "mrb_odbc_conn", mrb_odbc_conn_free,
+};
+static const mrb_data_type mrb_odbc_stmt_type = {
+  "mrb_odbc_stmt", mrb_odbc_stmt_free,
 };
 
 static mrb_odbc_env *mrb_odbc_env_alloc(mrb_state *mrb)
@@ -134,6 +145,43 @@ static void mrb_odbc_conn_free(mrb_state *mrb, void *p)
   mrb_free(mrb, conn);
 }
 
+static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb)
+{
+  return (mrb_odbc_stmt *)mrb_malloc(mrb, sizeof(mrb_odbc_stmt));
+}
+
+static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self)
+{
+  mrb_odbc_stmt *stmt;
+  mrb_odbc_conn *conn;
+  mrb_value arg_conn;
+  SQLRETURN r;
+
+  mrb_get_args(mrb, "o", &arg_conn);
+
+  conn = mrb_get_datatype(mrb, arg_conn, &mrb_odbc_conn_type);
+
+  stmt = mrb_odbc_stmt_alloc(mrb);
+
+  r = SQLAllocHandle(SQL_HANDLE_STMT, conn->conn, &(stmt->stmt));
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to create Stmt Handle.");
+  }
+
+  DATA_PTR(self) = stmt;
+  DATA_TYPE(self) = &mrb_odbc_stmt_type;
+
+  return self;
+}
+
+static void mrb_odbc_stmt_free(mrb_state *mrb, void *p)
+{
+  mrb_odbc_stmt *stmt = (mrb_odbc_stmt *)p;
+  if (stmt->stmt != NULL) {
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt->stmt);
+  }
+  mrb_free(mrb, stmt);
+}
 
 void
 mrb_mruby_odbc_gem_init(mrb_state* mrb)
@@ -141,6 +189,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   struct RClass *module_odbc;
   struct RClass *class_env;
   struct RClass *class_conn;
+  struct RClass *class_stmt;
 
   module_odbc = mrb_define_module(mrb, "ODBC");
 
@@ -169,6 +218,10 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   MRB_SET_INSTANCE_TT(class_conn, MRB_TT_DATA);
   mrb_define_method(mrb, class_conn, "initialize", mrb_odbc_conn_initialize, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_conn, "driver_connect", mrb_odbc_conn_driver_connect, MRB_ARGS_REQ(1));
+
+  class_stmt = mrb_define_class_under(mrb, module_odbc, "Stmt", mrb->object_class);
+  MRB_SET_INSTANCE_TT(class_stmt, MRB_TT_DATA);
+  mrb_define_method(mrb, class_stmt, "initialize", mrb_odbc_stmt_initialize, MRB_ARGS_REQ(1));
 }
 
 void
