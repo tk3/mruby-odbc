@@ -25,6 +25,7 @@ static void mrb_odbc_env_free(mrb_state *mrb, void *p);
 
 static mrb_odbc_conn *mrb_odbc_conn_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_conn_initialize(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_conn_driver_connect(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_conn_free(mrb_state *mrb, void *p);
 
 static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb);
