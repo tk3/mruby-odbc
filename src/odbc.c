@@ -174,6 +174,24 @@ static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self)
+{
+  SQLRETURN r;
+  mrb_odbc_stmt *stmt;
+  char *sql;
+
+  mrb_get_args(mrb, "z", &sql);
+
+  stmt = mrb_get_datatype(mrb, self, &mrb_odbc_stmt_type);
+
+  r = SQLExecDirect(stmt->stmt, (SQLCHAR *)sql, SQL_NTS);
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to execute SQL.");
+  }
+
+  return self;
+}
+
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p)
 {
   mrb_odbc_stmt *stmt = (mrb_odbc_stmt *)p;
@@ -222,6 +240,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   class_stmt = mrb_define_class_under(mrb, module_odbc, "Stmt", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_stmt, MRB_TT_DATA);
   mrb_define_method(mrb, class_stmt, "initialize", mrb_odbc_stmt_initialize, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_stmt, "exec_direct", mrb_odbc_stmt_exec_direct, MRB_ARGS_REQ(1));
 }
 
 void
