@@ -209,6 +209,22 @@ static mrb_value mrb_odbc_stmt_num_result_cols(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(columns);
 }
 
+static mrb_value mrb_odbc_stmt_row_count(mrb_state *mrb, mrb_value self)
+{
+  SQLRETURN r;
+  mrb_odbc_stmt *stmt;
+  SQLLEN rows = 0;
+
+  stmt = mrb_get_datatype(mrb, self, &mrb_odbc_stmt_type);
+
+  r = SQLRowCount(stmt->stmt, &rows);
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to num result cols");
+  }
+
+  return mrb_fixnum_value(rows);
+}
+
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p)
 {
   mrb_odbc_stmt *stmt = (mrb_odbc_stmt *)p;
@@ -259,6 +275,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_method(mrb, class_stmt, "initialize", mrb_odbc_stmt_initialize, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_stmt, "exec_direct", mrb_odbc_stmt_exec_direct, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_stmt, "num_result_cols", mrb_odbc_stmt_num_result_cols, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_stmt, "row_count", mrb_odbc_stmt_row_count, MRB_ARGS_NONE());
 }
 
 void
