@@ -36,6 +36,7 @@ static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
+static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
 
 static const mrb_data_type mrb_odbc_env_type = {
@@ -255,6 +256,21 @@ static void mrb_odbc_stmt_free(mrb_state *mrb, void *p)
   mrb_free(mrb, stmt);
 }
 
+static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self)
+{
+  SQLRETURN r;
+  mrb_odbc_resultset *rs;
+
+  rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
+
+  r = SQLFetch(rs->stmt);
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    return mrb_false_value();
+  }
+
+  return mrb_true_value();
+}
+
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p)
 {
   mrb_odbc_resultset *rs = (mrb_odbc_resultset *)p;
@@ -307,6 +323,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
 
   class_resultset = mrb_define_class_under(mrb, module_odbc, "ResultSet", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_resultset, MRB_TT_DATA);
+  mrb_define_method(mrb, class_resultset, "next", mrb_odbc_resultset_next, MRB_ARGS_NONE());
 }
 
 void
