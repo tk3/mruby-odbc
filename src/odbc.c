@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "mruby.h"
 #include "mruby/variable.h"
 #include "mruby/class.h"
@@ -37,6 +38,7 @@ static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
 static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
 
 static const mrb_data_type mrb_odbc_env_type = {
@@ -271,6 +273,30 @@ static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self)
   return mrb_true_value();
 }
 
+static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self)
+{
+  SQLLEN indicator;
+  char buf[256];  // TODO:
+  SQLRETURN r;
+  mrb_odbc_resultset *rs;
+  mrb_int idx;
+
+  mrb_get_args(mrb, "i", &idx);
+
+  rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
+
+  r = SQLGetData(rs->stmt, idx, SQL_C_CHAR, buf, sizeof(buf), &indicator);
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    return mrb_nil_value();
+  }
+
+  if (indicator == SQL_NULL_DATA) {
+    return mrb_nil_value();
+  }
+
+  return mrb_str_new(mrb, buf, strlen(buf));
+}
+
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p)
 {
   mrb_odbc_resultset *rs = (mrb_odbc_resultset *)p;
@@ -324,6 +350,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   class_resultset = mrb_define_class_under(mrb, module_odbc, "ResultSet", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_resultset, MRB_TT_DATA);
   mrb_define_method(mrb, class_resultset, "next", mrb_odbc_resultset_next, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_resultset, "get_string", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
 }
 
 void
