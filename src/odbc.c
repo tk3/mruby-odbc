@@ -35,6 +35,9 @@ static void mrb_odbc_conn_free(mrb_state *mrb, void *p);
 
 static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_stmt_num_result_cols(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_stmt_row_count(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
 static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self);
