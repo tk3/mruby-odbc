@@ -31,6 +31,7 @@ static void mrb_odbc_env_free(mrb_state *mrb, void *p);
 static mrb_odbc_conn *mrb_odbc_conn_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_conn_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_conn_driver_connect(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_conn_close(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_conn_free(mrb_state *mrb, void *p);
 
 static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb);
@@ -147,6 +148,26 @@ static mrb_value mrb_odbc_conn_driver_connect(mrb_state *mrb, mrb_value self)
   r = SQLDriverConnect(conn->conn, NULL, (SQLCHAR *)conn_str, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_COMPLETE);
   if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to DriverConnect.");
+  }
+
+  return self;
+}
+
+static mrb_value mrb_odbc_conn_close(mrb_state *mrb, mrb_value self)
+{
+  mrb_odbc_conn *conn;
+  SQLRETURN r;
+
+  conn = mrb_get_datatype(mrb, self, &mrb_odbc_conn_type);
+
+  r = SQLDisconnect(conn->conn);
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to Disconnect.");
+  }
+
+  r = SQLFreeHandle(SQL_HANDLE_DBC, conn->conn);
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to FreeHandle.");
   }
 
   return self;
@@ -342,6 +363,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   MRB_SET_INSTANCE_TT(class_conn, MRB_TT_DATA);
   mrb_define_method(mrb, class_conn, "initialize", mrb_odbc_conn_initialize, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_conn, "driver_connect", mrb_odbc_conn_driver_connect, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_conn, "close", mrb_odbc_conn_close, MRB_ARGS_NONE());
 
   class_stmt = mrb_define_class_under(mrb, module_odbc, "Stmt", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_stmt, MRB_TT_DATA);
