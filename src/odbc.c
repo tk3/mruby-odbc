@@ -43,6 +43,7 @@ static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
 static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
 
 static const mrb_data_type mrb_odbc_env_type = {
@@ -321,6 +322,25 @@ static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self)
   return mrb_str_new(mrb, buf, strlen(buf));
 }
 
+static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self)
+{
+  char col_name[256];  // TODO:
+  SQLRETURN r;
+  mrb_odbc_resultset *rs;
+  mrb_int idx;
+
+  mrb_get_args(mrb, "i", &idx);
+
+  rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
+
+  r = SQLColAttribute(rs->stmt, idx, SQL_DESC_LABEL, col_name, sizeof(col_name), NULL, NULL);
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    return mrb_nil_value();
+  }
+
+  return mrb_str_new(mrb, col_name, strlen(col_name));
+}
+
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p)
 {
   mrb_odbc_resultset *rs = (mrb_odbc_resultset *)p;
@@ -377,6 +397,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_method(mrb, class_resultset, "next", mrb_odbc_resultset_next, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_resultset, "get_string", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "[]", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_resultset, "name", mrb_odbc_resultset_get_col_name, MRB_ARGS_REQ(1));
 }
 
 void
