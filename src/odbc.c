@@ -26,6 +26,7 @@ typedef struct {
 static mrb_odbc_env *mrb_odbc_env_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_env_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_env_set_attr(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_env_close(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_env_free(mrb_state *mrb, void *p);
 
 static mrb_odbc_conn *mrb_odbc_conn_alloc(mrb_state *mrb);
@@ -93,6 +94,21 @@ static mrb_value mrb_odbc_env_set_attr(mrb_state *mrb, mrb_value self)
   env = mrb_get_datatype(mrb, self, &mrb_odbc_env_type);
 
   SQLSetEnvAttr(env->env, attr, (SQLPOINTER *)val, 0);
+
+  return self;
+}
+
+static mrb_value mrb_odbc_env_close(mrb_state *mrb, mrb_value self)
+{
+  mrb_odbc_env *env;
+  SQLRETURN r;
+
+  env = mrb_get_datatype(mrb, self, &mrb_odbc_env_type);
+
+  r = SQLFreeHandle(SQL_HANDLE_ENV, env->env);
+  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to close EnvHandle.");
+  }
 
   return self;
 }
@@ -362,6 +378,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   MRB_SET_INSTANCE_TT(class_env, MRB_TT_DATA);
   mrb_define_method(mrb, class_env, "initialize", mrb_odbc_env_initialize, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_env, "set_attr", mrb_odbc_env_set_attr, MRB_ARGS_REQ(2));
+  mrb_define_method(mrb, class_env, "close", mrb_odbc_env_close, MRB_ARGS_NONE());
 
   mrb_define_const(mrb, class_env, "ODBC_VERSION", mrb_fixnum_value(SQL_ATTR_ODBC_VERSION));
   mrb_define_const(mrb, class_env, "VERSION_2", mrb_fixnum_value(SQL_OV_ODBC2));
