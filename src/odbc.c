@@ -73,7 +73,7 @@ static mrb_value mrb_odbc_env_initialize(mrb_state *mrb, mrb_value self)
   env = mrb_odbc_env_alloc(mrb);
 
   r = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env->env);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to create Env Handle.");
   }
 
@@ -106,7 +106,7 @@ static mrb_value mrb_odbc_env_close(mrb_state *mrb, mrb_value self)
   env = mrb_get_datatype(mrb, self, &mrb_odbc_env_type);
 
   r = SQLFreeHandle(SQL_HANDLE_ENV, env->env);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to close EnvHandle.");
   }
 
@@ -142,7 +142,7 @@ static mrb_value mrb_odbc_conn_initialize(mrb_state *mrb, mrb_value self)
   conn = mrb_odbc_conn_alloc(mrb);
 
   r = SQLAllocHandle(SQL_HANDLE_DBC, env->env, &(conn->conn));
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to create Conn Handle.");
   }
 
@@ -163,7 +163,7 @@ static mrb_value mrb_odbc_conn_driver_connect(mrb_state *mrb, mrb_value self)
   conn = mrb_get_datatype(mrb, self, &mrb_odbc_conn_type);
 
   r = SQLDriverConnect(conn->conn, NULL, (SQLCHAR *)conn_str, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_COMPLETE);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to DriverConnect.");
   }
 
@@ -178,12 +178,12 @@ static mrb_value mrb_odbc_conn_close(mrb_state *mrb, mrb_value self)
   conn = mrb_get_datatype(mrb, self, &mrb_odbc_conn_type);
 
   r = SQLDisconnect(conn->conn);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to Disconnect.");
   }
 
   r = SQLFreeHandle(SQL_HANDLE_DBC, conn->conn);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to FreeHandle.");
   }
 
@@ -218,7 +218,7 @@ static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self)
   stmt = mrb_odbc_stmt_alloc(mrb);
 
   r = SQLAllocHandle(SQL_HANDLE_STMT, conn->conn, &(stmt->stmt));
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to create Stmt Handle.");
   }
 
@@ -243,7 +243,7 @@ static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self)
   stmt = mrb_get_datatype(mrb, self, &mrb_odbc_stmt_type);
 
   r = SQLExecDirect(stmt->stmt, (SQLCHAR *)sql, SQL_NTS);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to execute SQL.");
   }
 
@@ -266,7 +266,7 @@ static mrb_value mrb_odbc_stmt_num_result_cols(mrb_state *mrb, mrb_value self)
   stmt = mrb_get_datatype(mrb, self, &mrb_odbc_stmt_type);
 
   r = SQLNumResultCols(stmt->stmt, &columns);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to num result cols");
   }
 
@@ -282,7 +282,7 @@ static mrb_value mrb_odbc_stmt_row_count(mrb_state *mrb, mrb_value self)
   stmt = mrb_get_datatype(mrb, self, &mrb_odbc_stmt_type);
 
   r = SQLRowCount(stmt->stmt, &rows);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to num result cols");
   }
 
@@ -307,7 +307,7 @@ static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self)
   rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
 
   r = SQLFetch(rs->stmt);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     return mrb_false_value();
   }
 
@@ -327,7 +327,7 @@ static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self)
   rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
 
   r = SQLGetData(rs->stmt, idx, SQL_C_CHAR, buf, sizeof(buf), &indicator);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     return mrb_nil_value();
   }
 
@@ -350,7 +350,7 @@ static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self)
   rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
 
   r = SQLColAttribute(rs->stmt, idx, SQL_DESC_LABEL, col_name, sizeof(col_name), NULL, NULL);
-  if (!(r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)) {
+  if (!SQL_SUCCEEDED(r)) {
     return mrb_nil_value();
   }
 
