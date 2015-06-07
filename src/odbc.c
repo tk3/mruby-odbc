@@ -47,10 +47,12 @@ static mrb_value mrb_odbc_stmt_row_count(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
 static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_resultset_row(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
 
+static mrb_value mrb_odbc_row_get_string(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_row_free(mrb_state *mrb, void *p);
 
 static const mrb_data_type mrb_odbc_env_type = {
@@ -323,6 +325,32 @@ static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self)
   return mrb_true_value();
 }
 
+static mrb_value mrb_odbc_resultset_row(mrb_state *mrb, mrb_value self)
+{
+  SQLRETURN r;
+  mrb_odbc_resultset *rs;
+  mrb_odbc_row *row;
+  struct RClass *class_odbc;
+  struct RClass *class_odbc_row;
+  mrb_value c;
+
+  rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
+
+  r = SQLFetch(rs->stmt);
+  if (!SQL_SUCCEEDED(r)) {
+    return mrb_false_value();
+  }
+
+  row = (mrb_odbc_resultset *)mrb_malloc(mrb, sizeof(mrb_odbc_row));
+  row->stmt = rs->stmt;
+
+  class_odbc = mrb_module_get(mrb, "ODBC");
+  class_odbc_row = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(class_odbc), mrb_intern_lit(mrb, "Row")));
+  c = mrb_class_new_instance(mrb, 0, NULL, class_odbc_row);
+
+  return mrb_obj_value(Data_Wrap_Struct(mrb, mrb_obj_class(mrb, c), &mrb_odbc_row_type, row));
+}
+
 static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self)
 {
   SQLLEN indicator;
@@ -370,6 +398,30 @@ static void mrb_odbc_resultset_free(mrb_state *mrb, void *p)
 {
   mrb_odbc_resultset *rs = (mrb_odbc_resultset *)p;
   mrb_free(mrb, rs);
+}
+
+static mrb_value mrb_odbc_row_get_string(mrb_state *mrb, mrb_value self)
+{
+  SQLLEN indicator;
+  char buf[256];  // TODO:
+  SQLRETURN r;
+  mrb_odbc_row *row;
+  mrb_int idx;
+
+  mrb_get_args(mrb, "i", &idx);
+
+  row = mrb_get_datatype(mrb, self, &mrb_odbc_row_type);
+
+  r = SQLGetData(row->stmt, idx, SQL_C_CHAR, buf, sizeof(buf), &indicator);
+  if (!SQL_SUCCEEDED(r)) {
+    return mrb_nil_value();
+  }
+
+  if (indicator == SQL_NULL_DATA) {
+    return mrb_nil_value();
+  }
+
+  return mrb_str_new(mrb, buf, strlen(buf));
 }
 
 static void mrb_odbc_row_free(mrb_state *mrb, void *p)
@@ -428,12 +480,14 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   class_resultset = mrb_define_class_under(mrb, module_odbc, "ResultSet", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_resultset, MRB_TT_DATA);
   mrb_define_method(mrb, class_resultset, "next", mrb_odbc_resultset_next, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_resultset, "row", mrb_odbc_resultset_row, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_resultset, "get_string", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "[]", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "name", mrb_odbc_resultset_get_col_name, MRB_ARGS_REQ(1));
 
   class_row = mrb_define_class_under(mrb, module_odbc, "Row", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_row, MRB_TT_DATA);
+  mrb_define_method(mrb, class_row, "[]", mrb_odbc_row_get_string, MRB_ARGS_REQ(1));
 }
 
 void
