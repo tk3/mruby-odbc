@@ -54,6 +54,7 @@ static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_row(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_resultset_each(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
 
 /* ODBC::Row */
@@ -345,7 +346,7 @@ static mrb_value mrb_odbc_resultset_row(mrb_state *mrb, mrb_value self)
     return mrb_false_value();
   }
 
-  row = (mrb_odbc_resultset *)mrb_malloc(mrb, sizeof(mrb_odbc_row));
+  row = (mrb_odbc_row *)mrb_malloc(mrb, sizeof(mrb_odbc_row));
   row->stmt = rs->stmt;
 
   class_odbc = mrb_module_get(mrb, "ODBC");
@@ -396,6 +397,39 @@ static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self)
   }
 
   return mrb_str_new(mrb, col_name, strlen(col_name));
+}
+
+static mrb_value mrb_odbc_resultset_each(mrb_state *mrb, mrb_value self)
+{
+  SQLRETURN r;
+  mrb_value blk;
+  mrb_value arg;
+  mrb_odbc_resultset *rs;
+  mrb_odbc_row *row;
+  struct RClass *class_odbc;
+  struct RClass *class_odbc_row;
+  mrb_value c;
+
+  mrb_get_args(mrb, "&", &blk);
+  if (mrb_nil_p(blk)) {
+    return self;
+  }
+
+  rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
+
+  class_odbc = mrb_module_get(mrb, "ODBC");
+  for (r = SQLFetch(rs->stmt); SQL_SUCCEEDED(r); r = SQLFetch(rs->stmt)) {
+    row = (mrb_odbc_row *)mrb_malloc(mrb, sizeof(mrb_odbc_row));
+    row->stmt = rs->stmt;
+
+    class_odbc_row = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(class_odbc), mrb_intern_lit(mrb, "Row")));
+    c = mrb_class_new_instance(mrb, 0, NULL, class_odbc_row);
+    arg = mrb_obj_value(Data_Wrap_Struct(mrb, mrb_obj_class(mrb, c), &mrb_odbc_row_type, row));
+
+    mrb_yield_argv(mrb, blk, 1, &arg);
+  }
+
+  return self;
 }
 
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p)
@@ -491,6 +525,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_method(mrb, class_resultset, "get_string", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "[]", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "name", mrb_odbc_resultset_get_col_name, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_resultset, "each", mrb_odbc_resultset_each, MRB_ARGS_REQ(1));
 
   /* ODBC::Row: methods */
   class_row = mrb_define_class_under(mrb, module_odbc, "Row", mrb->object_class);
