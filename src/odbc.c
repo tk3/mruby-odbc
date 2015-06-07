@@ -27,18 +27,21 @@ typedef struct {
   SQLHSTMT stmt;
 } mrb_odbc_row;
 
+/* ODBC::Env */
 static mrb_odbc_env *mrb_odbc_env_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_env_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_env_set_attr(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_env_close(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_env_free(mrb_state *mrb, void *p);
 
+/* ODBC::Conn */
 static mrb_odbc_conn *mrb_odbc_conn_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_conn_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_conn_driver_connect(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_conn_close(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_conn_free(mrb_state *mrb, void *p);
 
+/* ODBC::Stmt */
 static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self);
@@ -46,12 +49,14 @@ static mrb_value mrb_odbc_stmt_num_result_cols(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_stmt_row_count(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
+/* ODBC::ResultSet */
 static mrb_value mrb_odbc_resultset_next(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_row(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
 
+/* ODBC::Row */
 static mrb_value mrb_odbc_row_get_string(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_row_free(mrb_state *mrb, void *p);
 
@@ -132,7 +137,6 @@ static void mrb_odbc_env_free(mrb_state *mrb, void *p)
   }
   mrb_free(mrb, env);
 }
-
 
 static mrb_odbc_conn *mrb_odbc_conn_alloc(mrb_state *mrb)
 {
@@ -442,6 +446,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
 
   module_odbc = mrb_define_module(mrb, "ODBC");
 
+  /* ODBC::Env: methods */
   class_env = mrb_define_class_under(mrb, module_odbc, "Env", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_env, MRB_TT_DATA);
   mrb_define_method(mrb, class_env, "initialize", mrb_odbc_env_initialize, MRB_ARGS_NONE());
@@ -463,13 +468,14 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_const(mrb, class_env, "CP_RELAXED_MATCH", mrb_fixnum_value(SQL_CP_RELAXED_MATCH));
   mrb_define_const(mrb, class_env, "CP_MATCH_DEFAULT", mrb_fixnum_value(SQL_CP_MATCH_DEFAULT));
 
-
+  /* ODBC::Conn: methods */
   class_conn = mrb_define_class_under(mrb, module_odbc, "Conn", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_conn, MRB_TT_DATA);
   mrb_define_method(mrb, class_conn, "initialize", mrb_odbc_conn_initialize, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_conn, "driver_connect", mrb_odbc_conn_driver_connect, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_conn, "close", mrb_odbc_conn_close, MRB_ARGS_NONE());
 
+  /* ODBC::Stmt: methods */
   class_stmt = mrb_define_class_under(mrb, module_odbc, "Stmt", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_stmt, MRB_TT_DATA);
   mrb_define_method(mrb, class_stmt, "initialize", mrb_odbc_stmt_initialize, MRB_ARGS_REQ(1));
@@ -477,6 +483,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_method(mrb, class_stmt, "num_result_cols", mrb_odbc_stmt_num_result_cols, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_stmt, "row_count", mrb_odbc_stmt_row_count, MRB_ARGS_NONE());
 
+  /* ODBC::ResultSet: methods */
   class_resultset = mrb_define_class_under(mrb, module_odbc, "ResultSet", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_resultset, MRB_TT_DATA);
   mrb_define_method(mrb, class_resultset, "next", mrb_odbc_resultset_next, MRB_ARGS_NONE());
@@ -485,6 +492,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_method(mrb, class_resultset, "[]", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "name", mrb_odbc_resultset_get_col_name, MRB_ARGS_REQ(1));
 
+  /* ODBC::Row: methods */
   class_row = mrb_define_class_under(mrb, module_odbc, "Row", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_row, MRB_TT_DATA);
   mrb_define_method(mrb, class_row, "[]", mrb_odbc_row_get_string, MRB_ARGS_REQ(1));
