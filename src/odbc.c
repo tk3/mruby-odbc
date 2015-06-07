@@ -23,6 +23,10 @@ typedef struct {
   SQLHSTMT stmt;
 } mrb_odbc_resultset;
 
+typedef struct {
+  SQLHSTMT stmt;
+} mrb_odbc_row;
+
 static mrb_odbc_env *mrb_odbc_env_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_env_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_env_set_attr(mrb_state *mrb, mrb_value self);
@@ -47,6 +51,8 @@ static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
 
+static void mrb_odbc_row_free(mrb_state *mrb, void *p);
+
 static const mrb_data_type mrb_odbc_env_type = {
   "mrb_odbc_env", mrb_odbc_env_free,
 };
@@ -58,6 +64,9 @@ static const mrb_data_type mrb_odbc_stmt_type = {
 };
 static const mrb_data_type mrb_odbc_resultset_type = {
   "mrb_odbc_resultset", mrb_odbc_resultset_free,
+};
+static const mrb_data_type mrb_odbc_row_type = {
+  "mrb_odbc_row", mrb_odbc_row_free,
 };
 
 static mrb_odbc_env *mrb_odbc_env_alloc(mrb_state *mrb)
@@ -363,6 +372,12 @@ static void mrb_odbc_resultset_free(mrb_state *mrb, void *p)
   mrb_free(mrb, rs);
 }
 
+static void mrb_odbc_row_free(mrb_state *mrb, void *p)
+{
+  mrb_odbc_row *row = (mrb_odbc_row *)p;
+  mrb_free(mrb, row);
+}
+
 void
 mrb_mruby_odbc_gem_init(mrb_state* mrb)
 {
@@ -371,6 +386,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   struct RClass *class_conn;
   struct RClass *class_stmt;
   struct RClass *class_resultset;
+  struct RClass *class_row;
 
   module_odbc = mrb_define_module(mrb, "ODBC");
 
@@ -415,6 +431,9 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_method(mrb, class_resultset, "get_string", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "[]", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "name", mrb_odbc_resultset_get_col_name, MRB_ARGS_REQ(1));
+
+  class_row = mrb_define_class_under(mrb, module_odbc, "Row", mrb->object_class);
+  MRB_SET_INSTANCE_TT(class_row, MRB_TT_DATA);
 }
 
 void
