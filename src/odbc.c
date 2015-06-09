@@ -61,6 +61,11 @@ static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
 static mrb_value mrb_odbc_row_get_string(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_row_free(mrb_state *mrb, void *p);
 
+/* ODBC::Error: */
+static mrb_value mrb_odbc_error_initialize(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_error_state(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_error_message(mrb_state *mrb, mrb_value self);
+
 static const mrb_data_type mrb_odbc_env_type = {
   "mrb_odbc_env", mrb_odbc_env_free,
 };
@@ -468,6 +473,24 @@ static void mrb_odbc_row_free(mrb_state *mrb, void *p)
   mrb_free(mrb, row);
 }
 
+static mrb_value mrb_odbc_error_initialize(mrb_state *mrb, mrb_value self)
+{
+  mrb_iv_set(mrb, self, mrb_intern_cstr(mrb, "state"), mrb_str_new_cstr(mrb, ""));
+  mrb_iv_set(mrb, self, mrb_intern_cstr(mrb, "message"), mrb_str_new_cstr(mrb, ""));
+
+  return self;
+}
+
+static mrb_value mrb_odbc_error_state(mrb_state *mrb, mrb_value self)
+{
+  return mrb_iv_get(mrb, self, mrb_intern_lit(mrb, "state"));
+}
+
+static mrb_value mrb_odbc_error_message(mrb_state *mrb, mrb_value self)
+{
+  return mrb_iv_get(mrb, self, mrb_intern_lit(mrb, "message"));
+}
+
 void
 mrb_mruby_odbc_gem_init(mrb_state* mrb)
 {
@@ -477,6 +500,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   struct RClass *class_stmt;
   struct RClass *class_resultset;
   struct RClass *class_row;
+  struct RClass *class_error;
 
   module_odbc = mrb_define_module(mrb, "ODBC");
 
@@ -531,6 +555,12 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   class_row = mrb_define_class_under(mrb, module_odbc, "Row", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_row, MRB_TT_DATA);
   mrb_define_method(mrb, class_row, "[]", mrb_odbc_row_get_string, MRB_ARGS_REQ(1));
+
+  /* ODBC::Error: */
+  class_error = mrb_define_class_under(mrb, module_odbc, "Error", mrb->object_class);
+  mrb_define_method(mrb, class_error, "initialize", mrb_odbc_error_initialize, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_error, "state", mrb_odbc_error_state, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_error, "message", mrb_odbc_error_message, MRB_ARGS_NONE());
 }
 
 void
