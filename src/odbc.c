@@ -265,7 +265,7 @@ static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self)
   stmt = mrb_get_datatype(mrb, self, &mrb_odbc_stmt_type);
 
   r = SQLExecDirect(stmt->stmt, (SQLCHAR *)sql, SQL_NTS);
-  if (!SQL_SUCCEEDED(r)) {
+  if (!(SQL_SUCCEEDED(r) || r == SQL_NO_DATA)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to execute SQL.");
   }
 
