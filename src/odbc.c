@@ -51,7 +51,6 @@ static mrb_value mrb_odbc_stmt_last_error(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
 /* ODBC::ResultSet */
-static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_each(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
@@ -349,30 +348,6 @@ static void mrb_odbc_stmt_free(mrb_state *mrb, void *p)
   mrb_free(mrb, stmt);
 }
 
-static mrb_value mrb_odbc_resultset_get_string(mrb_state *mrb, mrb_value self)
-{
-  SQLLEN indicator;
-  char buf[256];  // TODO:
-  SQLRETURN r;
-  mrb_odbc_resultset *rs;
-  mrb_int idx;
-
-  mrb_get_args(mrb, "i", &idx);
-
-  rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
-
-  r = SQLGetData(rs->stmt, idx, SQL_C_CHAR, buf, sizeof(buf), &indicator);
-  if (!SQL_SUCCEEDED(r)) {
-    return mrb_nil_value();
-  }
-
-  if (indicator == SQL_NULL_DATA) {
-    return mrb_nil_value();
-  }
-
-  return mrb_str_new(mrb, buf, strlen(buf));
-}
-
 static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self)
 {
   char col_name[256];  // TODO:
@@ -533,8 +508,6 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   /* ODBC::ResultSet: methods */
   class_resultset = mrb_define_class_under(mrb, module_odbc, "ResultSet", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_resultset, MRB_TT_DATA);
-  mrb_define_method(mrb, class_resultset, "get_string", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_resultset, "[]", mrb_odbc_resultset_get_string, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "name", mrb_odbc_resultset_get_col_name, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "each", mrb_odbc_resultset_each, MRB_ARGS_REQ(1));
 
