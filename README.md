@@ -17,16 +17,17 @@ e.set_attr ODBC::Env::ODBC_VERSION, ODBC::Env::VERSION_3
 
 conn = ODBC::Conn.new e
 
-conn.driver_connect 'DSN=myodbc'
+conn.connect 'DSN=myodbc'
 
 stmt = ODBC::Stmt.new conn
 
-rs = stmt.exec_direct 'SELECT * FROM users'
+rs = stmt.execute 'SELECT * FROM users'
 
-while rs.next
-  puts "col(1): #{rs.get_string 1}"
-  puts "col(2): #{rs.get_string 2}"
+rs.each do |row|
+  puts "col(1): #{rs[1]}"
+  puts "col(2): #{rs[2]}"
 end
+
 ```
 
 License
