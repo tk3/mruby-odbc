@@ -493,14 +493,14 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   class_conn = mrb_define_class_under(mrb, module_odbc, "Conn", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_conn, MRB_TT_DATA);
   mrb_define_method(mrb, class_conn, "initialize", mrb_odbc_conn_initialize, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_conn, "driver_connect", mrb_odbc_conn_driver_connect, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_conn, "connect", mrb_odbc_conn_driver_connect, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_conn, "close", mrb_odbc_conn_close, MRB_ARGS_NONE());
 
   /* ODBC::Stmt: methods */
   class_stmt = mrb_define_class_under(mrb, module_odbc, "Stmt", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_stmt, MRB_TT_DATA);
   mrb_define_method(mrb, class_stmt, "initialize", mrb_odbc_stmt_initialize, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_stmt, "exec_direct", mrb_odbc_stmt_exec_direct, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_stmt, "execute", mrb_odbc_stmt_exec_direct, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_stmt, "num_result_cols", mrb_odbc_stmt_num_result_cols, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_stmt, "row_count", mrb_odbc_stmt_row_count, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_stmt, "last_error", mrb_odbc_stmt_last_error, MRB_ARGS_NONE());
