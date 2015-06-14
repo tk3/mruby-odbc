@@ -45,12 +45,12 @@ static void mrb_odbc_conn_free(mrb_state *mrb, void *p);
 static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self);
-static mrb_value mrb_odbc_stmt_num_result_cols(mrb_state *mrb, mrb_value self);
-static mrb_value mrb_odbc_stmt_row_count(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_stmt_last_error(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
 /* ODBC::ResultSet */
+static mrb_value mrb_odbc_resultset_num_result_cols(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_resultset_row_count(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_resultset_each(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
@@ -276,38 +276,6 @@ static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self)
   return mrb_obj_value(Data_Wrap_Struct(mrb, mrb_obj_class(mrb, c), &mrb_odbc_resultset_type, rs));
 }
 
-static mrb_value mrb_odbc_stmt_num_result_cols(mrb_state *mrb, mrb_value self)
-{
-  SQLRETURN r;
-  mrb_odbc_stmt *stmt;
-  SQLSMALLINT columns = 0;
-
-  stmt = mrb_get_datatype(mrb, self, &mrb_odbc_stmt_type);
-
-  r = SQLNumResultCols(stmt->stmt, &columns);
-  if (!SQL_SUCCEEDED(r)) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to num result cols");
-  }
-
-  return mrb_fixnum_value(columns);
-}
-
-static mrb_value mrb_odbc_stmt_row_count(mrb_state *mrb, mrb_value self)
-{
-  SQLRETURN r;
-  mrb_odbc_stmt *stmt;
-  SQLLEN rows = 0;
-
-  stmt = mrb_get_datatype(mrb, self, &mrb_odbc_stmt_type);
-
-  r = SQLRowCount(stmt->stmt, &rows);
-  if (!SQL_SUCCEEDED(r)) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to num result cols");
-  }
-
-  return mrb_fixnum_value(rows);
-}
-
 static mrb_value mrb_odbc_stmt_last_error(mrb_state *mrb, mrb_value self)
 {
   SQLRETURN r;
@@ -346,6 +314,38 @@ static void mrb_odbc_stmt_free(mrb_state *mrb, void *p)
     stmt->stmt = NULL;
   }
   mrb_free(mrb, stmt);
+}
+
+static mrb_value mrb_odbc_resultset_num_result_cols(mrb_state *mrb, mrb_value self)
+{
+  SQLRETURN r;
+  mrb_odbc_resultset *rs;
+  SQLSMALLINT columns = 0;
+
+  rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
+
+  r = SQLNumResultCols(rs->stmt, &columns);
+  if (!SQL_SUCCEEDED(r)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to num result cols");
+  }
+
+  return mrb_fixnum_value(columns);
+}
+
+static mrb_value mrb_odbc_resultset_row_count(mrb_state *mrb, mrb_value self)
+{
+  SQLRETURN r;
+  mrb_odbc_resultset *rs;
+  SQLLEN rows = 0;
+
+  rs = mrb_get_datatype(mrb, self, &mrb_odbc_resultset_type);
+
+  r = SQLRowCount(rs->stmt, &rows);
+  if (!SQL_SUCCEEDED(r)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to num result cols");
+  }
+
+  return mrb_fixnum_value(rows);
 }
 
 static mrb_value mrb_odbc_resultset_get_col_name(mrb_state *mrb, mrb_value self)
@@ -501,13 +501,13 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   MRB_SET_INSTANCE_TT(class_stmt, MRB_TT_DATA);
   mrb_define_method(mrb, class_stmt, "initialize", mrb_odbc_stmt_initialize, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_stmt, "execute", mrb_odbc_stmt_exec_direct, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_stmt, "num_result_cols", mrb_odbc_stmt_num_result_cols, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_stmt, "row_count", mrb_odbc_stmt_row_count, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_stmt, "last_error", mrb_odbc_stmt_last_error, MRB_ARGS_NONE());
 
   /* ODBC::ResultSet: methods */
   class_resultset = mrb_define_class_under(mrb, module_odbc, "ResultSet", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_resultset, MRB_TT_DATA);
+  mrb_define_method(mrb, class_resultset, "num_result_cols", mrb_odbc_resultset_num_result_cols, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_resultset, "row_count", mrb_odbc_resultset_row_count, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_resultset, "name", mrb_odbc_resultset_get_col_name, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_resultset, "each", mrb_odbc_resultset_each, MRB_ARGS_REQ(1));
 
