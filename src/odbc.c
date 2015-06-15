@@ -45,7 +45,6 @@ static void mrb_odbc_conn_free(mrb_state *mrb, void *p);
 static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self);
-static mrb_value mrb_odbc_stmt_last_error(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
 /* ODBC::ResultSet */
@@ -59,10 +58,7 @@ static void mrb_odbc_resultset_free(mrb_state *mrb, void *p);
 static mrb_value mrb_odbc_row_get_string(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_row_free(mrb_state *mrb, void *p);
 
-/* ODBC::Error: */
-static mrb_value mrb_odbc_error_initialize(mrb_state *mrb, mrb_value self);
-static mrb_value mrb_odbc_error_state(mrb_state *mrb, mrb_value self);
-static mrb_value mrb_odbc_error_message(mrb_state *mrb, mrb_value self);
+static void mrb_odbc_raise_error(mrb_state *mrb, SQLSMALLINT handle_type, SQLHANDLE handle);
 
 static const mrb_data_type mrb_odbc_env_type = {
   "mrb_odbc_env", mrb_odbc_env_free,
@@ -263,7 +259,7 @@ static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self)
 
   r = SQLExecDirect(stmt->stmt, (SQLCHAR *)sql, SQL_NTS);
   if (!(SQL_SUCCEEDED(r) || r == SQL_NO_DATA)) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to execute SQL.");
+    mrb_odbc_raise_error(mrb, SQL_HANDLE_STMT, stmt->stmt);
   }
 
   rs = (mrb_odbc_resultset *)mrb_malloc(mrb, sizeof(mrb_odbc_resultset));
@@ -274,36 +270,6 @@ static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self)
   c = mrb_class_new_instance(mrb, 0, NULL, class_odbc_resultset);
 
   return mrb_obj_value(Data_Wrap_Struct(mrb, mrb_obj_class(mrb, c), &mrb_odbc_resultset_type, rs));
-}
-
-static mrb_value mrb_odbc_stmt_last_error(mrb_state *mrb, mrb_value self)
-{
-  SQLRETURN r;
-  mrb_odbc_stmt *stmt;
-  SQLCHAR state[SQL_SQLSTATE_SIZE];
-  SQLINTEGER native_error;
-  SQLCHAR message[256];
-  SQLSMALLINT message_len;
-  struct RClass *class_odbc;
-  struct RClass *class_odbc_error;
-  mrb_value c;
-
-  stmt = mrb_get_datatype(mrb, self, &mrb_odbc_stmt_type);
-
-  r = SQLGetDiagRec(SQL_HANDLE_STMT, stmt->stmt, 1, state, &native_error, message, sizeof(message), &message_len);
-  if (!SQL_SUCCEEDED(r)) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to num result cols");
-  }
-
-  class_odbc = mrb_module_get(mrb, "ODBC");
-  class_odbc_error = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(class_odbc), mrb_intern_lit(mrb, "Error")));
-  c = mrb_class_new_instance(mrb, 0, NULL, class_odbc_error);
-
-  mrb_iv_set(mrb, c, mrb_intern_cstr(mrb, "state"), mrb_str_new(mrb, (char *)state, sizeof(state)));
-  mrb_iv_set(mrb, c, mrb_intern_cstr(mrb, "native_error"), mrb_fixnum_value(native_error));
-  mrb_iv_set(mrb, c, mrb_intern_cstr(mrb, "message"), mrb_str_new_cstr(mrb, (char *)message));
-
-  return c;
 }
 
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p)
@@ -436,22 +402,25 @@ static void mrb_odbc_row_free(mrb_state *mrb, void *p)
   mrb_free(mrb, row);
 }
 
-static mrb_value mrb_odbc_error_initialize(mrb_state *mrb, mrb_value self)
+static void mrb_odbc_raise_error(mrb_state *mrb, SQLSMALLINT handle_type, SQLHANDLE handle)
 {
-  mrb_iv_set(mrb, self, mrb_intern_cstr(mrb, "state"), mrb_str_new_cstr(mrb, ""));
-  mrb_iv_set(mrb, self, mrb_intern_cstr(mrb, "message"), mrb_str_new_cstr(mrb, ""));
+  SQLRETURN r;
+  SQLCHAR state[SQL_SQLSTATE_SIZE];
+  SQLINTEGER native_error;
+  SQLCHAR message[256];
+  SQLSMALLINT message_len;
+  struct RClass *class_odbc;
+  struct RClass *class_odbc_error;
 
-  return self;
-}
+  r = SQLGetDiagRec(handle_type, handle, 1, state, &native_error, message, sizeof(message), &message_len);
+  if (!SQL_SUCCEEDED(r)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to get error message");
+  }
 
-static mrb_value mrb_odbc_error_state(mrb_state *mrb, mrb_value self)
-{
-  return mrb_iv_get(mrb, self, mrb_intern_lit(mrb, "state"));
-}
+  class_odbc = mrb_module_get(mrb, "ODBC");
+  class_odbc_error = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(class_odbc), mrb_intern_lit(mrb, "Error")));
 
-static mrb_value mrb_odbc_error_message(mrb_state *mrb, mrb_value self)
-{
-  return mrb_iv_get(mrb, self, mrb_intern_lit(mrb, "message"));
+  mrb_raise(mrb, class_odbc_error, (const char *)message);
 }
 
 void
@@ -464,6 +433,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   struct RClass *class_resultset;
   struct RClass *class_row;
   struct RClass *class_error;
+  struct RClass *std_error;
 
   module_odbc = mrb_define_module(mrb, "ODBC");
 
@@ -501,7 +471,6 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   MRB_SET_INSTANCE_TT(class_stmt, MRB_TT_DATA);
   mrb_define_method(mrb, class_stmt, "initialize", mrb_odbc_stmt_initialize, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_stmt, "execute", mrb_odbc_stmt_exec_direct, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_stmt, "last_error", mrb_odbc_stmt_last_error, MRB_ARGS_NONE());
 
   /* ODBC::ResultSet: methods */
   class_resultset = mrb_define_class_under(mrb, module_odbc, "ResultSet", mrb->object_class);
@@ -517,10 +486,8 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   mrb_define_method(mrb, class_row, "[]", mrb_odbc_row_get_string, MRB_ARGS_REQ(1));
 
   /* ODBC::Error: */
-  class_error = mrb_define_class_under(mrb, module_odbc, "Error", mrb->object_class);
-  mrb_define_method(mrb, class_error, "initialize", mrb_odbc_error_initialize, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_error, "state", mrb_odbc_error_state, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_error, "message", mrb_odbc_error_message, MRB_ARGS_NONE());
+  std_error = mrb_class_get(mrb, "StandardError");
+  class_error = mrb_define_class_under(mrb, module_odbc, "Error", std_error);
 }
 
 void
