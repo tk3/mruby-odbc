@@ -1,6 +1,6 @@
 mruby-odbc
 =========
-ODBC library for mruby.
+unixODBC bindings for mruby.
 experimental stage
 
 
