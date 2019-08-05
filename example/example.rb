@@ -1,3 +1,5 @@
+puts "mruby-odbc version: #{ODBC::VERSION}"
+
 env = ODBC::Env.new
 env.set_attr ODBC::Env::ODBC_VERSION, ODBC::Env::VERSION_3
 
