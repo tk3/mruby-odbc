@@ -45,6 +45,7 @@ static void mrb_odbc_conn_free(mrb_state *mrb, void *p);
 static mrb_odbc_stmt *mrb_odbc_stmt_alloc(mrb_state *mrb);
 static mrb_value mrb_odbc_stmt_initialize(mrb_state *mrb, mrb_value self);
 static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self);
+static mrb_value mrb_odbc_stmt_close(mrb_state *mrb, mrb_value self);
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p);
 
 /* ODBC::ResultSet */
@@ -272,6 +273,22 @@ static mrb_value mrb_odbc_stmt_exec_direct(mrb_state *mrb, mrb_value self)
   return mrb_obj_value(Data_Wrap_Struct(mrb, mrb_obj_class(mrb, c), &mrb_odbc_resultset_type, rs));
 }
 
+static mrb_value mrb_odbc_stmt_close(mrb_state *mrb, mrb_value self)
+{
+  mrb_odbc_stmt *stmt;
+  SQLRETURN r;
+
+  stmt = mrb_get_datatype(mrb, self, &mrb_odbc_stmt_type);
+
+  r = SQLFreeHandle(SQL_HANDLE_STMT, stmt->stmt);
+  if (!SQL_SUCCEEDED(r)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to FreeHandle.");
+  }
+  stmt->stmt = NULL;
+
+  return self;
+}
+
 static void mrb_odbc_stmt_free(mrb_state *mrb, void *p)
 {
   mrb_odbc_stmt *stmt = (mrb_odbc_stmt *)p;
@@ -471,6 +488,7 @@ mrb_mruby_odbc_gem_init(mrb_state* mrb)
   MRB_SET_INSTANCE_TT(class_stmt, MRB_TT_DATA);
   mrb_define_method(mrb, class_stmt, "initialize", mrb_odbc_stmt_initialize, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_stmt, "execute", mrb_odbc_stmt_exec_direct, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_stmt, "close", mrb_odbc_stmt_close, MRB_ARGS_NONE());
 
   /* ODBC::ResultSet: methods */
   class_resultset = mrb_define_class_under(mrb, module_odbc, "ResultSet", mrb->object_class);

@@ -29,5 +29,6 @@ rs.each do |row|
   puts d.join(',')
 end
 
+stmt.close
 conn.close
 env.close
